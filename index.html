@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>萌宠学园</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+<style>
+:root{
+  --coral:#FF6B6B;
+  --sun:#FFD93D;
+  --grass:#6BCB77;
+  --sky:#A8E4FF;
+  --blue:#4D96FF;
+  --purple:#B983FF;
+  --ink:#463239;
+  --card:#FFFDF7;
+  --shadow:0 6px 0 rgba(70,50,57,.15);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%}
+body{
+  font-family:'ZCOOL KuaiLe','PingFang SC','Microsoft YaHei',sans-serif;
+  color:var(--ink);
+  background:linear-gradient(var(--sky) 0%,#CFF1FF 55%,#FFF3C7 75%,#FFF3C7 100%);
+  overflow:hidden;
+  touch-action:manipulation;
+}
+#app{
+  position:relative;
+  max-width:480px;height:100dvh;margin:0 auto;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.screen{position:absolute;inset:0;display:none;flex-direction:column}
+.screen.active{display:flex}
+
+/* ===== 场景装饰 ===== */
+.sun{position:absolute;top:26px;right:26px;width:64px;height:64px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#FFE98A,var(--sun));
+  box-shadow:0 0 40px 12px rgba(255,217,61,.55);z-index:0}
+.cloud{position:absolute;background:#fff;border-radius:50px;opacity:.9;z-index:0}
+.cloud::before,.cloud::after{content:"";position:absolute;background:#fff;border-radius:50%}
+.cloud::before{width:55%;height:160%;left:18%;bottom:28%}
+.cloud::after{width:38%;height:120%;right:16%;bottom:32%}
+.cloud.c1{width:90px;height:28px;top:12%;left:-90px;animation:drift 38s linear infinite}
+.cloud.c2{width:60px;height:20px;top:24%;left:-60px;animation:drift 55s linear infinite 12s}
+@keyframes drift{to{transform:translateX(580px)}}
+.grass{position:absolute;left:0;right:0;bottom:0;height:110px;z-index:0;
+  background:linear-gradient(#8FDD9A,var(--grass));
+  border-radius:100% 100% 0 0/60px 60px 0 0}
+.grass::after{content:"";position:absolute;top:-14px;left:0;right:0;height:18px;
+  background:radial-gradient(circle at 10px 18px,transparent 12px,#8FDD9A 13px);
+  background-size:26px 18px}
+
+/* ===== 顶部栏 ===== */
+.topbar{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 0}
+.coinbag{display:flex;align-items:center;gap:6px;background:var(--card);border-radius:999px;
+  padding:6px 14px;font-size:20px;box-shadow:var(--shadow)}
+.game-title{font-size:24px;color:#fff;text-shadow:0 2px 0 rgba(70,50,57,.25)}
+.icon-btn{background:var(--card);border:none;border-radius:50%;width:40px;height:40px;
+  font-size:20px;box-shadow:var(--shadow);cursor:pointer;font-family:inherit}
+
+/* ===== 宠物区 ===== */
+.pet-stage{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;min-height:0}
+.pet-sprite{font-size:96px;line-height:1;cursor:pointer;
+  filter:drop-shadow(0 10px 6px rgba(70,50,57,.2));
+  animation:idle 2.6s ease-in-out infinite}
+.pet-sprite.lv2{font-size:104px}.pet-sprite.lv3{font-size:114px}
+.pet-sprite.lv4{font-size:124px}.pet-sprite.lv5{font-size:134px}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.pet-sprite.joy{animation:joy .55s ease-in-out 2}
+@keyframes joy{0%,100%{transform:translateY(0) scale(1)}30%{transform:translateY(-26px) scale(1.08)}60%{transform:translateY(0) scale(.96)}}
+.pet-sprite.eat{animation:eat .45s ease-in-out 3}
+@keyframes eat{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.pet-sprite.sad{animation:none;filter:grayscale(.45) drop-shadow(0 10px 6px rgba(70,50,57,.2))}
+.pet-meta{display:flex;align-items:center;gap:10px;font-size:20px}
+.badge{background:#fff;border-radius:999px;padding:4px 14px;box-shadow:var(--shadow)}
+.hunger-wrap{width:70%;max-width:260px}
+.hunger-label{font-size:15px;margin-bottom:4px;text-align:center}
+.hunger-bar{height:16px;background:rgba(255,255,255,.7);border-radius:999px;overflow:hidden;
+  box-shadow:inset 0 2px 3px rgba(70,50,57,.15)}
+.hunger-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#FFB26B,#FF6B6B);
+  transition:width .5s}
+.bubble{position:relative;background:#fff;border-radius:16px;padding:10px 16px;font-size:18px;
+  max-width:240px;text-align:center;box-shadow:var(--shadow);opacity:0;transition:opacity .4s}
+.bubble.show{opacity:1}
+.bubble::after{content:"";position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);
+  border:10px solid transparent;border-top-color:#fff;border-bottom:0}
+
+/* ===== 主按钮区 ===== */
+.menu{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;
+  padding:0 16px 14px}
+.subject-btn{border:none;border-radius:24px;padding:16px 4px 12px;font-family:inherit;
+  color:#fff;font-size:20px;cursor:pointer;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:transform .1s}
+.subject-btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(70,50,57,.15)}
+.subject-btn .emoji{font-size:40px}
+.subject-btn.math{background:linear-gradient(#6FAEFF,var(--blue))}
+.subject-btn.zi{background:linear-gradient(#FF8F8F,var(--coral))}
+.subject-btn.logic{background:linear-gradient(#8FDB9A,var(--grass))}
+.feed-row{position:relative;z-index:2;display:flex;justify-content:center;padding:0 16px 22px}
+.feed-btn{border:none;border-radius:999px;padding:12px 36px;font-family:inherit;font-size:22px;
+  background:linear-gradient(#FFE98A,var(--sun));color:var(--ink);cursor:pointer;
+  box-shadow:var(--shadow);transition:transform .1s}
+.feed-btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(70,50,57,.15)}
+
+/* ===== 宠物选择 ===== */
+#screen-select{justify-content:center;align-items:center;gap:20px;padding:20px}
+.select-title{font-size:30px;text-align:center;line-height:1.5;z-index:2}
+.pet-choices{display:flex;gap:16px;z-index:2}
+.pet-choice{border:none;background:var(--card);border-radius:28px;padding:22px 18px;
+  font-family:inherit;font-size:22px;color:var(--ink);cursor:pointer;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;gap:8px;
+  transition:transform .15s}
+.pet-choice .emoji{font-size:64px}
+.pet-choice:active{transform:scale(.94)}
+.select-hint{font-size:18px;z-index:2;background:rgba(255,255,255,.75);border-radius:12px;padding:8px 16px}
+
+/* ===== 答题界面 ===== */
+#screen-quiz{background:linear-gradient(#CFF1FF,#FFF3C7)}
+.quiz-top{display:flex;align-items:center;justify-content:space-between;
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 0}
+.progress{font-size:20px;background:#fff;border-radius:999px;padding:6px 16px;box-shadow:var(--shadow)}
+.stars{font-size:20px;background:#fff;border-radius:999px;padding:6px 16px;box-shadow:var(--shadow)}
+.question-card{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:10px 20px;min-height:0}
+.q-speak{background:none;border:none;font-size:30px;cursor:pointer;background:#fff;
+  border-radius:50%;width:56px;height:56px;box-shadow:var(--shadow);font-family:inherit}
+.q-text{font-size:34px;text-align:center;line-height:1.4}
+.q-visual{font-size:30px;letter-spacing:4px;text-align:center;line-height:1.6}
+.q-big{font-size:64px;line-height:1.2}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 24px 10px}
+.options.three{grid-template-columns:1fr 1fr 1fr}
+.options.two{grid-template-columns:1fr 1fr;max-width:320px;width:100%;margin:0 auto}
+.opt{border:none;border-radius:22px;background:var(--card);box-shadow:var(--shadow);
+  font-family:inherit;font-size:34px;color:var(--ink);padding:20px 6px;cursor:pointer;
+  min-height:84px;transition:transform .1s;display:flex;align-items:center;justify-content:center}
+.opt:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(70,50,57,.15)}
+.opt .oemoji{font-size:52px;line-height:1}
+.opt.correct{background:linear-gradient(#8FDB9A,var(--grass));color:#fff}
+.opt.wrong{background:linear-gradient(#FF9C9C,var(--coral));color:#fff;
+  animation:shake .4s ease-in-out}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.opt.dim{opacity:.45}
+
+/* ===== 星星/爱心粒子 ===== */
+.spark{position:absolute;font-size:30px;pointer-events:none;z-index:9;
+  animation:sparkUp 1s ease-out forwards}
+@keyframes sparkUp{0%{transform:translate(0,0) scale(.6);opacity:1}
+  100%{transform:translate(var(--dx),-110px) scale(1.3);opacity:0}}
+
+/* ===== 结算 ===== */
+#screen-result{justify-content:center;align-items:center;gap:18px;padding:20px;z-index:2}
+.result-card{background:var(--card);border-radius:32px;padding:30px 36px;text-align:center;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;gap:12px;
+  max-width:320px;width:100%}
+.result-stars{font-size:44px;letter-spacing:4px}
+.result-title{font-size:30px}
+.result-coins{font-size:26px}
+.big-btn{border:none;border-radius:999px;padding:14px 44px;font-family:inherit;font-size:24px;
+  background:linear-gradient(#6FAEFF,var(--blue));color:#fff;cursor:pointer;
+  box-shadow:var(--shadow);margin-top:6px;transition:transform .1s}
+.big-btn:active{transform:translateY(4px)}
+
+/* ===== 食物弹层 ===== */
+.modal-mask{position:absolute;inset:0;background:rgba(70,50,57,.45);z-index:10;
+  display:none;align-items:flex-end;justify-content:center}
+.modal-mask.show{display:flex}
+.food-sheet{background:var(--card);border-radius:28px 28px 0 0;width:100%;max-width:480px;
+  padding:22px 20px calc(env(safe-area-inset-bottom,0px) + 24px);
+  display:flex;flex-direction:column;gap:12px}
+.food-sheet h3{text-align:center;font-size:24px}
+.food-item{display:flex;align-items:center;gap:14px;background:#FFF6E5;border-radius:18px;
+  padding:12px 16px;font-size:20px;cursor:pointer;transition:transform .1s}
+.food-item:active{transform:scale(.97)}
+.food-item .femoji{font-size:40px}
+.food-item .finfo{flex:1;line-height:1.4}
+.food-item .fprice{background:#fff;border-radius:999px;padding:4px 12px;font-size:18px}
+.food-item.poor{opacity:.5}
+
+@media (prefers-reduced-motion:reduce){
+  .pet-sprite,.cloud{animation:none!important}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 场景装饰 -->
+  <div class="sun"></div>
+  <div class="cloud c1"></div>
+  <div class="cloud c2"></div>
+  <div class="grass"></div>
+
+  <!-- 宠物选择 -->
+  <div class="screen" id="screen-select">
+    <div class="select-title">你好呀！<br>选一只小伙伴陪你学习吧</div>
+    <div class="pet-choices" id="petChoices"></div>
+    <div class="select-hint">它长大了以后会更厉害哦</div>
+  </div>
+
+  <!-- 主界面 -->
+  <div class="screen" id="screen-home">
+    <div class="topbar">
+      <div class="coinbag">🪙 <span id="coinNum">0</span></div>
+      <div class="game-title">萌宠学园</div>
+      <button class="icon-btn" id="btnReset">⚙️</button>
+    </div>
+    <div class="pet-stage">
+      <div class="bubble" id="petBubble"></div>
+      <div class="pet-sprite" id="petSprite"></div>
+      <div class="pet-meta">
+        <span class="badge" id="petNameBadge">小猫 Lv.1</span>
+        <span class="badge" id="fedBadge">🍗 0</span>
+      </div>
+      <div class="hunger-wrap">
+        <div class="hunger-label" id="hungerLabel">饱食度</div>
+        <div class="hunger-bar"><div class="hunger-fill" id="hungerFill"></div></div>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="subject-btn math" data-type="math"><span class="emoji">🔢</span>数学</button>
+      <button class="subject-btn zi" data-type="zi"><span class="emoji">📚</span>认字</button>
+      <button class="subject-btn logic" data-type="logic"><span class="emoji">🧩</span>逻辑</button>
+    </div>
+    <div class="feed-row"><button class="feed-btn" id="btnFeed">🍎 喂食</button></div>
+  </div>
+
+  <!-- 答题 -->
+  <div class="screen" id="screen-quiz">
+    <div class="quiz-top">
+      <button class="icon-btn" id="btnQuit">✕</button>
+      <div class="progress" id="quizProgress">1/5</div>
+      <div class="stars">⭐ <span id="quizCorrect">0</span></div>
+    </div>
+    <div class="question-card">
+      <button class="q-speak" id="btnSpeak">🔊</button>
+      <div class="q-visual" id="qVisual" style="display:none"></div>
+      <div class="q-text" id="qText"></div>
+    </div>
+    <div class="options" id="optBox"></div>
+  </div>
+
+  <!-- 结算 -->
+  <div class="screen" id="screen-result">
+    <div class="result-card">
+      <div class="result-stars" id="resultStars">⭐⭐⭐</div>
+      <div class="result-title" id="resultTitle">太棒啦！</div>
+      <div class="result-coins" id="resultCoins">🪙 +6</div>
+      <button class="big-btn" id="btnHome">回家喂宠物</button>
+    </div>
+  </div>
+
+  <!-- 食物弹层 -->
+  <div class="modal-mask" id="foodMask">
+    <div class="food-sheet">
+      <h3>给 <span id="foodPetName">小猫</span> 吃点东西吧</h3>
+      <div id="foodList"></div>
+      <button class="big-btn" id="btnCloseFood" style="background:linear-gradient(#FFB26B,#FF9C4A)">先不吃了</button>
+    </div>
+  </div>
+
+</div>
+<script>
+"use strict";
+/* ================= 数据 ================= */
+const PETS = [
+  {emoji:"🐱", name:"小猫"},
+  {emoji:"🐰", name:"小兔"},
+  {emoji:"🐼", name:"熊猫"},
+];
+const FOODS = [
+  {emoji:"🍎", name:"苹果", price:3, hunger:12},
+  {emoji:"🍞", name:"面包", price:5, hunger:25},
+  {emoji:"🍰", name:"蛋糕", price:8, hunger:45},
+];
+const LV_FEED = [0,4,10,20,35]; // 喂食次数 → 等级1~5
+const CHARS = [
+  ["山","🏔️"],["水","💧"],["火","🔥"],["木","🌲"],["花","🌸"],["草","🌱"],
+  ["月","🌙"],["星","⭐"],["日","☀️"],["云","☁️"],["雨","🌧️"],["雪","❄️"],
+  ["鸟","🐦"],["鱼","🐟"],["虫","🐛"],["果","🍎"],["米","🍚"],["车","🚗"],
+  ["门","🚪"],["书","📖"],["手","✋"],["口","👄"],["耳","👂"],["足","👣"],
+];
+const SHAPES = [["圆形","⭕"],["方形","🟥"],["三角形","🔺"],["星形","⭐"],["心形","❤️"]];
+const PRAISE = ["太棒了！","答对啦！","真厉害！","你真聪明！","哇，好棒呀！","继续保持哦！"];
+const ENCOURAGE = ["再想一想哦","差一点点，再试试？","没关系，慢慢想"];
+const IDLE_TALK = ["陪我玩呀！","我们去学数学吧！","今天想学认字吗？","我肚子有点饿了呢","你真棒，我最喜欢你了","逻辑题也很有趣哦！"];
+
+const $ = id => document.getElementById(id);
+let state = null;
+let audioCtx = null;
+
+function save(){ try{ localStorage.setItem("mengchong_save", JSON.stringify(state)); }catch(e){} }
+function load(){
+  try{
+    const raw = localStorage.getItem("mengchong_save");
+    if(raw){ state = JSON.parse(raw); decayHunger(); return; }
+  }catch(e){}
+  state = {pet:null, name:"", coins:0, hunger:80, fedCount:0,
+    mathCorrect:0, lastSeen:Date.now()};
+}
+function decayHunger(){
+  const hours = (Date.now() - (state.lastSeen||Date.now())) / 3600000;
+  state.hunger = Math.max(5, state.hunger - Math.floor(hours*3));
+  state.lastSeen = Date.now();
+}
+function petLevel(){ let lv=1; for(let i=0;i<LV_FEED.length;i++) if(state.fedCount>=LV_FEED[i]) lv=i+1; return lv; }
+
+/* ================= 语音 ================= */
+let voiceReady = false;
+function unlockAudio(){
+  if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  if(audioCtx && audioCtx.state==="suspended") audioCtx.resume();
+  voiceReady = true;
+}
+function speak(text){
+  if(!voiceReady || !("speechSynthesis" in window)) return;
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-CN"; u.rate = 0.95; u.pitch = 1.15;
+    const v = speechSynthesis.getVoices().find(v=>v.lang && v.lang.startsWith("zh"));
+    if(v) u.voice = v;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function tone(freq, t0, dur, type="sine", vol=.18){
+  if(!audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, audioCtx.currentTime + t0);
+  g.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + t0 + dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(audioCtx.currentTime + t0); o.stop(audioCtx.currentTime + t0 + dur + .05);
+}
+const sfxRight = () => { tone(523,.0,.15); tone(659,.1,.15); tone(784,.2,.3); };
+const sfxWrong = () => { tone(300,0,.2,"triangle"); tone(240,.18,.3,"triangle"); };
+const sfxCoin  = () => { tone(880,0,.1,"square",.1); tone(1175,.1,.25,"square",.1); };
+
+/* ================= 屏幕切换 ================= */
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $(id).classList.add("active");
+}
+
+/* ================= 粒子 ================= */
+function sparks(x, y, emojis){
+  const app = $("app");
+  const ar = app.getBoundingClientRect();
+  x -= ar.left; y -= ar.top;
+  for(let i=0;i<8;i++){
+    const s = document.createElement("div");
+    s.className = "spark";
+    s.textContent = emojis[i % emojis.length];
+    s.style.left = (x + (Math.random()*80-40)) + "px";
+    s.style.top = y + "px";
+    s.style.setProperty("--dx", (Math.random()*120-60) + "px");
+    app.appendChild(s);
+    setTimeout(()=>s.remove(), 1000);
+  }
+}
+
+/* ================= 宠物选择 ================= */
+function renderSelect(){
+  const box = $("petChoices");
+  box.innerHTML = "";
+  PETS.forEach(p=>{
+    const b = document.createElement("button");
+    b.className = "pet-choice";
+    b.innerHTML = `<span class="emoji">${p.emoji}</span>${p.name}`;
+    b.onclick = ()=>{
+      unlockAudio();
+      state.pet = p.emoji; state.name = p.name;
+      save(); speak(`你好！我是${p.name}，以后我们一起学习吧！`);
+      renderHome(); showScreen("screen-home");
+    };
+    box.appendChild(b);
+  });
+}
+
+/* ================= 主界面 ================= */
+function renderHome(){
+  $("coinNum").textContent = state.coins;
+  const lv = petLevel();
+  const sprite = $("petSprite");
+  sprite.textContent = state.pet;
+  sprite.className = "pet-sprite lv"+lv;
+  if(state.hunger < 30) sprite.classList.add("sad");
+  $("petNameBadge").textContent = `${state.name} Lv.${lv}`;
+  $("fedBadge").textContent = `🍗 ${state.fedCount}`;
+  $("hungerFill").style.width = state.hunger + "%";
+  $("hungerLabel").textContent = state.hunger < 30 ? "饿扁扁了，喂喂我吧" : "饱食度";
+  $("foodPetName").textContent = state.name;
+}
+let bubbleTimer = null;
+function say(text){
+  const b = $("petBubble");
+  b.textContent = text; b.classList.add("show");
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(()=>b.classList.remove("show"), 4000);
+}
+function startIdleTalk(){
+  setInterval(()=>{
+    if(!$("screen-home").classList.contains("active")) return;
+    if($("petBubble").classList.contains("show")) return;
+    const pool = state.hunger < 40
+      ? ["我好饿呀，喂喂我吧！","答对题目就有金币买好吃的哦"]
+      : IDLE_TALK;
+    say(pool[Math.floor(Math.random()*pool.length)]);
+  }, 12000);
+}
+
+/* ================= 出题 ================= */
+const rnd = n => Math.floor(Math.random()*n);
+const pick = arr => arr[rnd(arr.length)];
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){ const j=rnd(i+1); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+  return arr;
+}
+const NUM_CN = ["零","一","二","三","四","五","六","七","八","九","十",
+  "十一","十二","十三","十四","十五","十六","十七","十八","十九","二十"];
+const numCN = n => (n>=0 && n<=20) ? NUM_CN[n] : String(n);
+
+function makeMath(){
+  const hard = state.mathCorrect >= 15;
+  let a, b, ans, op;
+  if(Math.random() < .5){ op="+";
+    a = 1 + rnd(hard ? 15 : 8);
+    b = 1 + rnd((hard ? 19 : 9) - a);
+    ans = a + b;
+  } else { op="-";
+    a = hard ? 6 + rnd(13) : 3 + rnd(7);
+    b = 1 + rnd(a - 1);
+    ans = a - b;
+  }
+  const wrongs = new Set();
+  while(wrongs.size < 2){
+    const w = ans + pick([-2,-1,1,2, rnd(4)+1]);
+    if(w >= 0 && w !== ans && w <= 20) wrongs.add(w);
+  }
+  const opts = shuffle([ans, ...wrongs]);
+  const speakText = `${numCN(a)}${op==="+"?"加":"减"}${numCN(b)}等于几？`;
+  return {
+    visual: hard ? "" : "🍎".repeat(a) + (op==="+" ? " ＋ " + "🍎".repeat(b) : " 🍴 " + "🍎".repeat(b)),
+    text: `${a} ${op} ${b} = ?`,
+    speak: speakText,
+    options: opts.map(n=>({label:String(n), correct:n===ans})),
+  };
+}
+function makeZi(){
+  const entry = pick(CHARS);
+  const others = shuffle(CHARS.filter(c=>c[0]!==entry[0])).slice(0,2);
+  const showPic = Math.random() < .5;
+  let opts, text, speakText, visual;
+  if(showPic){
+    text = `哪个图片是「${entry[0]}」？`;
+    speakText = `哪个图片是「${entry[0]}」字？`;
+    visual = entry[0];
+    opts = shuffle([{label:entry[1],correct:true}, ...others.map(o=>({label:o[1],correct:false}))]);
+  } else {
+    text = `这是哪个字？`;
+    speakText = `这个图片是哪个字？`;
+    visual = entry[1];
+    opts = shuffle([{label:entry[0],correct:true}, ...others.map(o=>({label:o[0],correct:false}))]);
+  }
+  return {visual, text, speak:speakText,
+    options:opts.map(o=>({label:o.label, correct:o.correct, emoji:showPic}))};
+}
+function makeLogic(){
+  const kind = rnd(3);
+  if(kind === 0){ // 找规律
+    const pool = ["🔴","🔵","🟡","🟢","⭐","❤️"];
+    let seq;
+    if(Math.random()<.5){
+      const [A,B] = shuffle([...pool]).slice(0,2);
+      seq = [A,B,A,B];
+    } else {
+      const [A,B] = shuffle([...pool]).slice(0,2);
+      seq = [A,A,B,A,A];
+    }
+    const ans = seq[seq.length-1] === seq[seq.length-2] ? seq[seq.length-3] : seq[seq.length-2];
+    const others = shuffle(pool.filter(p=>p!==ans)).slice(0,2);
+    return {
+      visual: seq.join(" ") + " ❓",
+      text: "接下来是哪一个？",
+      speak: "找一找，接下来是哪一个？",
+      options: shuffle([{label:ans,correct:true}, ...others.map(o=>({label:o,correct:false}))])
+        .map(o=>({...o, emoji:true})),
+    };
+  }
+  if(kind === 1){ // 比多少
+    let n = 1 + rnd(6), m;
+    do { m = 1 + rnd(6); } while(m === n);
+    const [ea, eb] = shuffle(["🍎","🍓","🐠","🐥","🍪"]).slice(0,2);
+    const moreLeft = n > m;
+    return {
+      visualHTML: `${ea.repeat(n)}<br>${eb.repeat(m)}`,
+      text: "哪一行更多？",
+      speak: "数一数，哪一行更多？",
+      options: [
+        {label:"上面一行", correct:moreLeft},
+        {label:"下面一行", correct:!moreLeft},
+      ].map(o=>({...o, small:true})),
+    };
+  }
+  // 形状
+  const [name, emoji] = pick(SHAPES);
+  const others = shuffle(SHAPES.filter(s=>s[0]!==name)).slice(0,2);
+  return {
+    visual: "",
+    text: `找出${name}`,
+    speak: `找出${name}`,
+    options: shuffle([{label:emoji,correct:true}, ...others.map(o=>({label:o[1],correct:false}))])
+      .map(o=>({...o, emoji:true})),
+  };
+}
+
+/* ================= 答题流程 ================= */
+let quiz = null;
+const makers = {math:makeMath, zi:makeZi, logic:makeLogic};
+
+function startQuiz(type){
+  unlockAudio();
+  quiz = {type, index:0, correct:0, q:null, locked:false};
+  $("quizCorrect").textContent = "0";
+  showScreen("screen-quiz");
+  nextQuestion();
+}
+function nextQuestion(){
+  if(quiz.index >= 5){ endRound(); return; }
+  quiz.q = makers[quiz.type]();
+  quiz.index++; quiz.locked = false;
+  $("quizProgress").textContent = `${quiz.index}/5`;
+  const v = $("qVisual");
+  if(quiz.q.visualHTML){ v.innerHTML = quiz.q.visualHTML; v.style.display="block"; }
+  else if(quiz.q.visual){ v.textContent = quiz.q.visual; v.style.display="block"; }
+  else { v.style.display = "none"; }
+  $("qText").textContent = quiz.q.text;
+  const box = $("optBox");
+  box.className = "options" + (quiz.q.options.length===3 ? " three" : quiz.q.options.length===2 ? " two" : "");
+  box.innerHTML = "";
+  quiz.q.options.forEach((o,i)=>{
+    const b = document.createElement("button");
+    b.className = "opt";
+    if(o.emoji) b.innerHTML = `<span class="oemoji">${o.label}</span>`;
+    else if(o.small) { b.style.fontSize="26px"; b.textContent = o.label; }
+    else b.textContent = o.label;
+    b.onclick = ()=>pickOption(i, b);
+    box.appendChild(b);
+  });
+  speak(quiz.q.speak);
+}
+function pickOption(i, btn){
+  if(quiz.locked) return;
+  quiz.locked = true;
+  const opt = quiz.q.options[i];
+  const rect = btn.getBoundingClientRect();
+  if(opt.correct){
+    quiz.correct++;
+    state.mathCorrect += quiz.type==="math" ? 1 : 0;
+    $("quizCorrect").textContent = quiz.correct;
+    btn.classList.add("correct");
+    sfxRight(); speak(pick(PRAISE));
+    sparks(rect.left + rect.width/2, rect.top, ["⭐","✨","🌟"]);
+    setTimeout(nextQuestion, 1100);
+  } else {
+    btn.classList.add("wrong");
+    sfxWrong(); speak(pick(ENCOURAGE));
+    document.querySelectorAll(".opt").forEach(b=>{
+      const o = quiz.q.options[[...$("optBox").children].indexOf(b)];
+      if(o && o.correct) b.classList.add("correct");
+      else if(b !== btn) b.classList.add("dim");
+    });
+    setTimeout(nextQuestion, 1700);
+  }
+  save();
+}
+function endRound(){
+  const coins = quiz.correct * 2 + (quiz.correct===5 ? 2 : 0);
+  state.coins += coins; save();
+  const stars = quiz.correct>=5 ? "⭐⭐⭐" : quiz.correct>=4 ? "⭐⭐" : quiz.correct>=3 ? "⭐" : "💪";
+  $("resultStars").textContent = stars;
+  $("resultTitle").textContent = quiz.correct>=4 ? "太厉害啦！" : quiz.correct>=2 ? "做得不错！" : "继续加油！";
+  $("resultCoins").textContent = `🪙 +${coins}`;
+  showScreen("screen-result");
+  sfxCoin();
+  speak(quiz.correct>=4 ? "你真是太厉害了！" : "做得不错，回家喂喂小宠物吧！");
+}
+
+/* ================= 喂食 ================= */
+function renderFoods(){
+  const list = $("foodList");
+  list.innerHTML = "";
+  FOODS.forEach(f=>{
+    const row = document.createElement("div");
+    row.className = "food-item" + (state.coins < f.price ? " poor" : "");
+    row.innerHTML = `<span class="femoji">${f.emoji}</span>
+      <span class="finfo">${f.name}<br><small>饱食度 +${f.hunger}</small></span>
+      <span class="fprice">🪙 ${f.price}</span>`;
+    row.onclick = ()=>buyFood(f);
+    list.appendChild(row);
+  });
+}
+function buyFood(f){
+  if(state.coins < f.price) return;
+  if(state.hunger >= 100){ say("我吃得好饱呀！"); return; }
+  state.coins -= f.price;
+  state.hunger = Math.min(100, state.hunger + f.hunger);
+  state.fedCount++;
+  save();
+  $("foodMask").classList.remove("show");
+  renderHome();
+  const sprite = $("petSprite");
+  sprite.classList.remove("sad");
+  sprite.classList.add("eat");
+  setTimeout(()=>sprite.classList.remove("eat"), 1400);
+  const rect = sprite.getBoundingClientRect();
+  sparks(rect.left + rect.width/2, rect.top + 20, ["❤️","💗","✨"]);
+  speak(pick(["真好吃！谢谢！","唔，太好吃啦！","我吃饱啦，爱你哦！"]));
+}
+
+/* ================= 事件绑定 ================= */
+document.querySelectorAll(".subject-btn").forEach(b=>{
+  b.onclick = ()=>{
+    if(state.hunger < 15){
+      speak(`${state.name}饿得没力气出题啦，先喂喂我吧！`);
+      say("先喂喂我吧……");
+      return;
+    }
+    startQuiz(b.dataset.type);
+  };
+});
+$("btnFeed").onclick = ()=>{ unlockAudio(); renderFoods(); $("foodMask").classList.add("show"); };
+$("btnCloseFood").onclick = ()=>$("foodMask").classList.remove("show");
+$("foodMask").onclick = e=>{ if(e.target===$("foodMask")) $("foodMask").classList.remove("show"); };
+$("btnQuit").onclick = ()=>{ speechSynthesis.cancel(); renderHome(); showScreen("screen-home"); };
+$("btnHome").onclick = ()=>{ renderHome(); showScreen("screen-home"); };
+$("btnSpeak").onclick = ()=>{ if(quiz && quiz.q) speak(quiz.q.speak); };
+$("petSprite").onclick = e=>{
+  unlockAudio();
+  const s = $("petSprite");
+  s.classList.remove("joy"); void s.offsetWidth; s.classList.add("joy");
+  const rect = s.getBoundingClientRect();
+  sparks(rect.left + rect.width/2, rect.top, ["❤️","💗"]);
+  say(pick(["咯咯咯，好痒呀！","我最喜欢你啦！","一起加油学习吧！"]));
+};
+$("btnReset").onclick = ()=>{
+  if(confirm("确定要清空所有记录、重新开始吗？")){
+    localStorage.removeItem("mengchong_save");
+    state = null; load(); renderSelect(); showScreen("screen-select");
+  }
+};
+
+/* ================= 启动 ================= */
+load();
+if(state.pet){
+  renderHome(); showScreen("screen-home"); startIdleTalk();
+} else {
+  renderSelect(); showScreen("screen-select");
+}
+if("speechSynthesis" in window){ speechSynthesis.getVoices(); }
+setInterval(()=>{ // 挂机时也缓慢掉饱食度
+  if(state.hunger > 5){ state.hunger -= 1; state.lastSeen = Date.now(); save(); renderHome(); }
+}, 20*60*1000);
+</script>
+</body>
+</html>
